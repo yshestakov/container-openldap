@@ -1,10 +1,6 @@
 #!/bin/bash -e
 set -o pipefail
 
-# set -x (bash debug) if log level is trace
-# https://github.com/osixia/docker-light-baseimage/blob/master/image/tool/log-helper
-log-helper level eq trace && set -x
-
 # Reduce maximum number of number of open file descriptors to 1024
 # otherwise slapd consumes two orders of magnitude more of RAM
 # see https://github.com/docker/docker/issues/8231
@@ -22,10 +18,10 @@ file_env() {
   # The variables are already defined from the docker-light-baseimage
   # So if the _FILE variable is available we ovewrite them
         if [ "${!fileVar:-}" ]; then
-    log-helper trace "${fileVar} was defined"
+    echo "${fileVar} was defined"
 
                 val="$(< "${!fileVar}")"
-    log-helper debug "${var} was repalced with the contents of ${fileVar} (the value was: ${val})"
+    echo "${var} was repalced with the contents of ${fileVar} (the value was: ${val})"
 
     export "$var"="$val"
         fi
@@ -42,37 +38,37 @@ file_env 'LDAP_READONLY_USER_PASSWORD'
 [ -d /var/lib/ldap ] || mkdir -p /var/lib/ldap
 [ -d /etc/ldap/slapd.d ] || mkdir -p /etc/ldap/slapd.d
 
-log-helper info "openldap user and group adjustments"
+echo "openldap user and group adjustments"
 LDAP_OPENLDAP_UID=${LDAP_OPENLDAP_UID:-911}
 LDAP_OPENLDAP_GID=${LDAP_OPENLDAP_GID:-911}
 
-log-helper info "get current openldap uid/gid info inside container"
+echo "get current openldap uid/gid info inside container"
 CUR_USER_GID=`id -g openldap || true`
 CUR_USER_UID=`id -u openldap || true`
 
 LDAP_UIDGID_CHANGED=false
 if [ "$LDAP_OPENLDAP_UID" != "$CUR_USER_UID" ]; then
-    log-helper info "CUR_USER_UID (${CUR_USER_UID}) does't match LDAP_OPENLDAP_UID (${LDAP_OPENLDAP_UID}), adjusting..."
+    echo "CUR_USER_UID (${CUR_USER_UID}) does't match LDAP_OPENLDAP_UID (${LDAP_OPENLDAP_UID}), adjusting..."
     usermod -o -u "$LDAP_OPENLDAP_UID" openldap
     LDAP_UIDGID_CHANGED=true
 fi
 if [ "$LDAP_OPENLDAP_GID" != "$CUR_USER_GID" ]; then
-    log-helper info "CUR_USER_GID (${CUR_USER_GID}) does't match LDAP_OPENLDAP_GID (${LDAP_OPENLDAP_GID}), adjusting..."
+    echo "CUR_USER_GID (${CUR_USER_GID}) does't match LDAP_OPENLDAP_GID (${LDAP_OPENLDAP_GID}), adjusting..."
     groupmod -o -g "$LDAP_OPENLDAP_GID" openldap
     LDAP_UIDGID_CHANGED=true
 fi
 
-log-helper info '-------------------------------------'
-log-helper info 'openldap GID/UID'
-log-helper info '-------------------------------------'
-log-helper info "User uid:    $(id -u openldap)"
-log-helper info "User gid:    $(id -g openldap)"
-log-helper info "uid/gid changed: ${LDAP_UIDGID_CHANGED}"
-log-helper info "-------------------------------------"
+echo '-------------------------------------'
+echo 'openldap GID/UID'
+echo '-------------------------------------'
+echo "User uid:    $(id -u openldap)"
+echo "User gid:    $(id -g openldap)"
+echo "uid/gid changed: ${LDAP_UIDGID_CHANGED}"
+echo "-------------------------------------"
 
 # fix file permissions
 if [ "${DISABLE_CHOWN,,}" == "false" ]; then
-  log-helper info "updating file uid/gid ownership"
+  echo "updating file uid/gid ownership"
   chown -R openldap:openldap /var/run/slapd
   chown -R openldap:openldap /var/lib/ldap
   chown -R openldap:openldap /etc/ldap
@@ -138,7 +134,7 @@ if [ ! -e "$FIRST_START_DONE" ]; then
     if `echo "$domain_from_base_dn" | egrep -q ".*$LDAP_DOMAIN\$" || echo $LDAP_DOMAIN | egrep -q ".*$domain_from_base_dn\$"`; then
       : # pass
     else
-      log-helper error "Error: domain $domain_from_base_dn derived from LDAP_BASE_DN $LDAP_BASE_DN does not match LDAP_DOMAIN $LDAP_DOMAIN"
+      echo "Error: domain $domain_from_base_dn derived from LDAP_BASE_DN $LDAP_BASE_DN does not match LDAP_DOMAIN $LDAP_DOMAIN"
       exit 1
     fi
   }
@@ -155,7 +151,7 @@ if [ ! -e "$FIRST_START_DONE" ]; then
   function ldap_add_or_modify (){
     local LDIF_FILE=$1
 
-    log-helper debug "Processing file ${LDIF_FILE}"
+    echo "Processing file ${LDIF_FILE}"
     sed -i "s|{{ LDAP_BASE_DN }}|${LDAP_BASE_DN}|g" $LDIF_FILE
     sed -i "s|{{ LDAP_BACKEND }}|${LDAP_BACKEND}|g" $LDIF_FILE
     sed -i "s|{{ LDAP_DOMAIN }}|${LDAP_DOMAIN}|g" $LDIF_FILE
@@ -164,9 +160,9 @@ if [ ! -e "$FIRST_START_DONE" ]; then
       sed -i "s|{{ LDAP_READONLY_USER_PASSWORD_ENCRYPTED }}|${LDAP_READONLY_USER_PASSWORD_ENCRYPTED}|g" $LDIF_FILE
     fi
     if grep -iq changetype $LDIF_FILE ; then
-        ( ldapmodify -Y EXTERNAL -Q -H ldapi:/// -f $LDIF_FILE 2>&1 || ldapmodify -h localhost -p 389 -D cn=admin,$LDAP_BASE_DN -w "$LDAP_ADMIN_PASSWORD" -f $LDIF_FILE 2>&1 ) | log-helper debug
+        ( ldapmodify -Y EXTERNAL -Q -H ldapi:/// -f $LDIF_FILE 2>&1 || ldapmodify -h localhost -p 389 -D cn=admin,$LDAP_BASE_DN -w "$LDAP_ADMIN_PASSWORD" -f $LDIF_FILE 2>&1 ) | echo
     else
-        ( ldapadd -Y EXTERNAL -Q -H ldapi:/// -f $LDIF_FILE 2>&1 || ldapadd -h localhost -p 389 -D cn=admin,$LDAP_BASE_DN -w "$LDAP_ADMIN_PASSWORD" -f $LDIF_FILE 2>&1 ) | log-helper debug
+        ( ldapadd -Y EXTERNAL -Q -H ldapi:/// -f $LDIF_FILE 2>&1 || ldapadd -h localhost -p 389 -D cn=admin,$LDAP_BASE_DN -w "$LDAP_ADMIN_PASSWORD" -f $LDIF_FILE 2>&1 ) | echo
     fi
   }
 
@@ -176,6 +172,11 @@ if [ ! -e "$FIRST_START_DONE" ]; then
   BOOTSTRAP=false
 
   #
+  # Source first start env file
+  #
+  . /first-start.env
+
+  #
   # database and config directory are empty
   # setup bootstrap config - Part 1
   #
@@ -183,8 +184,8 @@ if [ ! -e "$FIRST_START_DONE" ]; then
     [ -z "$(ls -A -I lost+found --ignore=.* /etc/ldap/slapd.d)" ]; then
 
     BOOTSTRAP=true
-    log-helper info "Database and config directory are empty..."
-    log-helper info "Init new ldap server..."
+    echo "Database and config directory are empty..."
+    echo "Init new ldap server..."
 
     get_ldap_base_dn
     cat <<EOF | debconf-set-selections
@@ -208,7 +209,7 @@ EOF
     # RFC2307bis schema
     if [ "${LDAP_RFC2307BIS_SCHEMA,,}" == "true" ]; then
 
-      log-helper info "Switching schema to RFC2307bis..."
+      echo "Switching schema to RFC2307bis..."
       cp ${CONTAINER_SERVICE_DIR}/slapd/assets/config/bootstrap/schema/rfc2307bis.* /etc/ldap/schema/
 
       rm -f /etc/ldap/slapd.d/cn=config/cn=schema/*
@@ -229,14 +230,14 @@ EOF
   # Error: the database directory (/var/lib/ldap) is empty but not the config directory (/etc/ldap/slapd.d)
   #
   elif [ -z "$(ls -A -I lost+found --ignore=.* /var/lib/ldap)" ] && [ ! -z "$(ls -A -I lost+found --ignore=.* /etc/ldap/slapd.d)" ]; then
-    log-helper error "Error: the database directory (/var/lib/ldap) is empty but not the config directory (/etc/ldap/slapd.d)"
+    echo "Error: the database directory (/var/lib/ldap) is empty but not the config directory (/etc/ldap/slapd.d)"
     exit 1
 
   #
   # Error: the config directory (/etc/ldap/slapd.d) is empty but not the database directory (/var/lib/ldap)
   #
   elif [ ! -z "$(ls -A -I lost+found --ignore=.* /var/lib/ldap)" ] && [ -z "$(ls -A -I lost+found --ignore=.* /etc/ldap/slapd.d)" ]; then
-    log-helper error "Error: the config directory (/etc/ldap/slapd.d) is empty but not the database directory (/var/lib/ldap)"
+    echo "Error: the config directory (/etc/ldap/slapd.d) is empty but not the database directory (/var/lib/ldap)"
     exit 1
 
   #
@@ -248,9 +249,9 @@ EOF
     # due to default switch from hdb to mdb in 1.2.x
     if [ "${LDAP_BACKEND}" = "mdb" ]; then
       if [ -e "/etc/ldap/slapd.d/cn=config/olcDatabase={1}hdb.ldif" ]; then
-        log-helper warning -e "\n\n\nWarning: LDAP_BACKEND environment variable is set to mdb but hdb backend is detected."
-        log-helper warning "Going to use hdb as LDAP_BACKEND. Set LDAP_BACKEND=hdb to discard this message."
-        log-helper warning -e "https://github.com/osixia/docker-openldap#set-your-own-environment-variables\n\n\n"
+        echo -e "\n\n\nWarning: LDAP_BACKEND environment variable is set to mdb but hdb backend is detected."
+        echo "Going to use hdb as LDAP_BACKEND. Set LDAP_BACKEND=hdb to discard this message."
+        echo -e "https://github.com/osixia/docker-openldap#set-your-own-environment-variables\n\n\n"
         LDAP_BACKEND="hdb"
       fi
     fi
@@ -258,7 +259,7 @@ EOF
   fi
 
   if [ "${KEEP_EXISTING_CONFIG,,}" == "true" ]; then
-    log-helper info "/!\ KEEP_EXISTING_CONFIG = true configration will not be updated"
+    echo "/!\ KEEP_EXISTING_CONFIG = true configration will not be updated"
   else
     #
     # start OpenLDAP
@@ -285,7 +286,7 @@ EOF
     if [ -e "$WAS_STARTED_WITH_TLS" ]; then
       source $WAS_STARTED_WITH_TLS
 
-      log-helper debug "Check previous TLS certificates..."
+      echo "Check previous TLS certificates..."
 
       # fix for #73
       # image started with an existing database/config created before 1.1.5
@@ -304,16 +305,16 @@ EOF
     fi
 
     # start OpenLDAP
-    log-helper info "Start OpenLDAP..."
+    echo "Start OpenLDAP..."
     # At this stage, we can just listen to ldap:// and ldap:// without naming any names
-    if log-helper level ge debug; then
+    if echo ge debug; then
       slapd -h "ldap:/// ldapi:///" -u openldap -g openldap -d "$LDAP_LOG_LEVEL" 2>&1 &
     else
       slapd -h "ldap:/// ldapi:///" -u openldap -g openldap
     fi
 
 
-    log-helper info "Waiting for OpenLDAP to start..."
+    echo "Waiting for OpenLDAP to start..."
     while [ ! -e /run/slapd/slapd.pid ]; do sleep 0.1; done
 
     #
@@ -321,10 +322,10 @@ EOF
     #
     if $BOOTSTRAP; then
 
-      log-helper info "Add bootstrap schemas..."
+      echo "Add bootstrap schemas..."
 
       # add ppolicy schema
-      ldapadd -c -Y EXTERNAL -Q -H ldapi:/// -f /etc/ldap/schema/ppolicy.ldif 2>&1 | log-helper debug
+      ldapadd -c -Y EXTERNAL -Q -H ldapi:/// -f /etc/ldap/schema/ppolicy.ldif 2>&1 | echo
 
       # convert schemas to ldif
       SCHEMAS=""
@@ -335,14 +336,14 @@ EOF
 
       # add converted schemas
       for f in $(find ${CONTAINER_SERVICE_DIR}/slapd/assets/config/bootstrap/schema -name \*.ldif -type f|sort); do
-        log-helper debug "Processing file ${f}"
+        echo "Processing file ${f}"
         # add schema if not already exists
         SCHEMA=$(basename "${f}" .ldif)
         ADD_SCHEMA=$(is_new_schema $SCHEMA)
         if [ "$ADD_SCHEMA" -eq 1 ]; then
-          ldapadd -c -Y EXTERNAL -Q -H ldapi:/// -f $f 2>&1 | log-helper debug
+          ldapadd -c -Y EXTERNAL -Q -H ldapi:/// -f $f 2>&1 | echo
         else
-          log-helper info "schema ${f} already exists"
+          echo "schema ${f} already exists"
         fi
       done
 
@@ -355,15 +356,15 @@ EOF
       sed -i "s|{{ LDAP_BASE_DN }}|${LDAP_BASE_DN}|g" ${CONTAINER_SERVICE_DIR}/slapd/assets/config/bootstrap/ldif/02-security.ldif
 
       # process config files (*.ldif) in bootstrap directory (do no process files in subdirectories)
-      log-helper info "Add image bootstrap ldif..."
+      echo "Add image bootstrap ldif..."
       for f in $(find ${CONTAINER_SERVICE_DIR}/slapd/assets/config/bootstrap/ldif -mindepth 1 -maxdepth 1 -type f -name \*.ldif  | sort); do
-        log-helper debug "Processing file ${f}"
+        echo "Processing file ${f}"
         ldap_add_or_modify "$f"
       done
 
       # read only user
       if [ "${LDAP_READONLY_USER,,}" == "true" ]; then
-        log-helper info "Add read only user..."
+        echo "Add read only user..."
 
         LDAP_READONLY_USER_PASSWORD_ENCRYPTED=$(slappasswd -s $LDAP_READONLY_USER_PASSWORD)
 
@@ -371,7 +372,7 @@ EOF
         ldap_add_or_modify "${CONTAINER_SERVICE_DIR}/slapd/assets/config/bootstrap/ldif/readonly-user/readonly-user-acl.ldif"
       fi
 
-      log-helper info "Add custom bootstrap ldif..."
+      echo "Add custom bootstrap ldif..."
       for f in $(find ${CONTAINER_SERVICE_DIR}/slapd/assets/config/bootstrap/ldif/custom -type f -name \*.ldif  | sort); do
         ldap_add_or_modify "$f"
       done
@@ -382,20 +383,20 @@ EOF
     # TLS config
     #
     if [ -e "$WAS_STARTED_WITH_TLS" ] && [ "${LDAP_TLS,,}" != "true" ]; then
-      log-helper error "/!\ WARNING: LDAP_TLS=false but the container was previously started with LDAP_TLS=true"
-      log-helper error "TLS can't be disabled once added. Ignoring LDAP_TLS=false."
+      echo "/!\ WARNING: LDAP_TLS=false but the container was previously started with LDAP_TLS=true"
+      echo "TLS can't be disabled once added. Ignoring LDAP_TLS=false."
       LDAP_TLS=true
     fi
 
     if [ -e "$WAS_STARTED_WITH_TLS_ENFORCE" ] && [ "${LDAP_TLS_ENFORCE,,}" != "true" ]; then
-      log-helper error "/!\ WARNING: LDAP_TLS_ENFORCE=false but the container was previously started with LDAP_TLS_ENFORCE=true"
-      log-helper error "TLS enforcing can't be disabled once added. Ignoring LDAP_TLS_ENFORCE=false."
+      echo "/!\ WARNING: LDAP_TLS_ENFORCE=false but the container was previously started with LDAP_TLS_ENFORCE=true"
+      echo "TLS enforcing can't be disabled once added. Ignoring LDAP_TLS_ENFORCE=false."
       LDAP_TLS_ENFORCE=true
     fi
 
     if [ "${LDAP_TLS,,}" == "true" ]; then
 
-      log-helper info "Add TLS config..."
+      echo "Add TLS config..."
 
       # generate a certificate and key with ssl-helper tool if LDAP_CRT and LDAP_KEY files don't exists
       # https://github.com/osixia/docker-light-baseimage/blob/master/image/service-available/:ssl-tools/assets/tool/ssl-helper
@@ -419,7 +420,7 @@ EOF
       sed -i "s|{{ LDAP_TLS_CIPHER_SUITE }}|${LDAP_TLS_CIPHER_SUITE}|g" ${CONTAINER_SERVICE_DIR}/slapd/assets/config/tls/tls-enable.ldif
       sed -i "s|{{ LDAP_TLS_VERIFY_CLIENT }}|${LDAP_TLS_VERIFY_CLIENT}|g" ${CONTAINER_SERVICE_DIR}/slapd/assets/config/tls/tls-enable.ldif
 
-      ldapmodify -Y EXTERNAL -Q -H ldapi:/// -f ${CONTAINER_SERVICE_DIR}/slapd/assets/config/tls/tls-enable.ldif 2>&1 | log-helper debug
+      ldapmodify -Y EXTERNAL -Q -H ldapi:/// -f ${CONTAINER_SERVICE_DIR}/slapd/assets/config/tls/tls-enable.ldif 2>&1 | echo
 
       [[ -f "$WAS_STARTED_WITH_TLS" ]] && rm -f "$WAS_STARTED_WITH_TLS"
       echo "export PREVIOUS_LDAP_TLS_CA_CRT_PATH=${LDAP_TLS_CA_CRT_PATH}" > $WAS_STARTED_WITH_TLS
@@ -429,21 +430,21 @@ EOF
 
       # enforce TLS
       if [ "${LDAP_TLS_ENFORCE,,}" == "true" ]; then
-        log-helper info "Add enforce TLS..."
-        ldapmodify -Y EXTERNAL -Q -H ldapi:/// -f ${CONTAINER_SERVICE_DIR}/slapd/assets/config/tls/tls-enforce-enable.ldif 2>&1 | log-helper debug
+        echo "Add enforce TLS..."
+        ldapmodify -Y EXTERNAL -Q -H ldapi:/// -f ${CONTAINER_SERVICE_DIR}/slapd/assets/config/tls/tls-enforce-enable.ldif 2>&1 | echo
         touch $WAS_STARTED_WITH_TLS_ENFORCE
 
       # disable tls enforcing (not possible for now)
       #else
-        #log-helper info "Disable enforce TLS..."
-        #ldapmodify -Y EXTERNAL -Q -H ldapi:/// -f ${CONTAINER_SERVICE_DIR}/slapd/assets/config/tls/tls-enforce-disable.ldif 2>&1 | log-helper debug || true
+        #echo "Disable enforce TLS..."
+        #ldapmodify -Y EXTERNAL -Q -H ldapi:/// -f ${CONTAINER_SERVICE_DIR}/slapd/assets/config/tls/tls-enforce-disable.ldif 2>&1 | echo || true
         #[[ -f "$WAS_STARTED_WITH_TLS_ENFORCE" ]] && rm -f "$WAS_STARTED_WITH_TLS_ENFORCE"
       fi
 
     # disable tls (not possible for now)
     #else
-      #log-helper info "Disable TLS config..."
-      #ldapmodify -c -Y EXTERNAL -Q -H ldapi:/// -f ${CONTAINER_SERVICE_DIR}/slapd/assets/config/tls/tls-disable.ldif 2>&1 | log-helper debug || true
+      #echo "Disable TLS config..."
+      #ldapmodify -c -Y EXTERNAL -Q -H ldapi:/// -f ${CONTAINER_SERVICE_DIR}/slapd/assets/config/tls/tls-disable.ldif 2>&1 | echo || true
       #[[ -f "$WAS_STARTED_WITH_TLS" ]] && rm -f "$WAS_STARTED_WITH_TLS"
     fi
 
@@ -455,17 +456,17 @@ EOF
 
     function disableReplication() {
       sed -i "s|{{ LDAP_BACKEND }}|${LDAP_BACKEND}|g" ${CONTAINER_SERVICE_DIR}/slapd/assets/config/replication/replication-disable.ldif
-      ldapmodify -c -Y EXTERNAL -Q -H ldapi:/// -f ${CONTAINER_SERVICE_DIR}/slapd/assets/config/replication/replication-disable.ldif 2>&1 | log-helper debug || true
+      ldapmodify -c -Y EXTERNAL -Q -H ldapi:/// -f ${CONTAINER_SERVICE_DIR}/slapd/assets/config/replication/replication-disable.ldif 2>&1 | echo || true
       [[ -f "$WAS_STARTED_WITH_REPLICATION" ]] && rm -f "$WAS_STARTED_WITH_REPLICATION"
     }
 
     if [ "${LDAP_REPLICATION,,}" == "true" ]; then
 
-      log-helper info "Add replication config..."
+      echo "Add replication config..."
       disableReplication || true
 
       i=1
-      for host in $(complex-bash-env iterate LDAP_REPLICATION_HOSTS)
+      for host in ${LDAP_REPLICATION_HOSTS}
       do
         sed -i "s|{{ LDAP_REPLICATION_HOSTS }}|olcServerID: $i ${!host}\n{{ LDAP_REPLICATION_HOSTS }}|g" ${CONTAINER_SERVICE_DIR}/slapd/assets/config/replication/replication-enable.ldif
         sed -i "s|{{ LDAP_REPLICATION_HOSTS_CONFIG_SYNC_REPL }}|olcSyncRepl: rid=00$i provider=${!host} ${LDAP_REPLICATION_CONFIG_SYNCPROV}\n{{ LDAP_REPLICATION_HOSTS_CONFIG_SYNC_REPL }}|g" ${CONTAINER_SERVICE_DIR}/slapd/assets/config/replication/replication-enable.ldif
@@ -485,21 +486,21 @@ EOF
 
       sed -i "s|{{ LDAP_BACKEND }}|${LDAP_BACKEND}|g" ${CONTAINER_SERVICE_DIR}/slapd/assets/config/replication/replication-enable.ldif
 
-      ldapmodify -c -Y EXTERNAL -Q -H ldapi:/// -f ${CONTAINER_SERVICE_DIR}/slapd/assets/config/replication/replication-enable.ldif 2>&1 | log-helper debug || true
+      ldapmodify -c -Y EXTERNAL -Q -H ldapi:/// -f ${CONTAINER_SERVICE_DIR}/slapd/assets/config/replication/replication-enable.ldif 2>&1 | echo || true
 
       [[ -f "$WAS_STARTED_WITH_REPLICATION" ]] && rm -f "$WAS_STARTED_WITH_REPLICATION"
       echo "export PREVIOUS_HOSTNAME=${HOSTNAME}" > $WAS_STARTED_WITH_REPLICATION
 
     elif [ "${LDAP_REPLICATION,,}" == "own" ]; then
 
-      log-helper info "Not touching replication config..."
+      echo "Not touching replication config..."
 
       [[ -f "$WAS_STARTED_WITH_REPLICATION" ]] && rm -f "$WAS_STARTED_WITH_REPLICATION"
       echo "export PREVIOUS_HOSTNAME=${HOSTNAME}" > $WAS_STARTED_WITH_REPLICATION
 
     else
 
-      log-helper info "Disable replication config..."
+      echo "Disable replication config..."
       disableReplication || true
 
     fi
@@ -515,7 +516,7 @@ EOF
       sed -i "s|{{ LDAP_BASE_DN }}|${LDAP_BASE_DN}|g" ${CONTAINER_SERVICE_DIR}/slapd/assets/config/admin/admin-password-change.ldif
 
       ldap_add_or_modify "${CONTAINER_SERVICE_DIR}/slapd/assets/config/admin/root-password-change.ldif"
-      ldap_add_or_modify "${CONTAINER_SERVICE_DIR}/slapd/assets/config/admin/admin-password-change.ldif" | log-helper debug || true
+      ldap_add_or_modify "${CONTAINER_SERVICE_DIR}/slapd/assets/config/admin/admin-password-change.ldif" | echo || true
 
     else
         touch "$WAS_ADMIN_PASSWORD_SET"
@@ -524,7 +525,7 @@ EOF
     #
     # stop OpenLDAP
     #
-    log-helper info "Stop OpenLDAP..."
+    echo "Stop OpenLDAP..."
 
     SLAPD_PID=$(cat /run/slapd/slapd.pid)
     kill -15 $SLAPD_PID
@@ -535,7 +536,7 @@ EOF
   # ldap client config
   #
   if [ "${LDAP_TLS,,}" == "true" ]; then
-    log-helper info "Configure ldap client TLS configuration..."
+    echo "Configure ldap client TLS configuration..."
     sed -i --follow-symlinks "s,TLS_CACERT.*,TLS_CACERT ${LDAP_TLS_CA_CRT_PATH},g" /etc/ldap/ldap.conf
     echo "TLS_REQCERT ${LDAP_TLS_VERIFY_CLIENT}" >> /etc/ldap/ldap.conf
     cp -f /etc/ldap/ldap.conf ${CONTAINER_SERVICE_DIR}/slapd/assets/ldap.conf
@@ -550,14 +551,15 @@ EOF
   # remove container config files
   #
   if [ "${LDAP_REMOVE_CONFIG_AFTER_SETUP,,}" == "true" ]; then
-    log-helper info "Remove config files..."
+    echo "Remove config files..."
     rm -rf ${CONTAINER_SERVICE_DIR}/slapd/assets/config
   fi
 
   #
   # setup done :)
   #
-  log-helper info "First start is done..."
+  rm -f /first-start.env
+  echo "First start is done..."
   touch $FIRST_START_DONE
 fi
 

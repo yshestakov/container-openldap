@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# set -x (bash debug) if log level is trace
-# https://github.com/osixia/docker-light-baseimage/blob/master/image/tool/log-helper
-log-helper level eq trace && set -x
-
 SCHEMAS=$1
 
 tmpd=`mktemp -d`
@@ -27,7 +23,7 @@ done
 slaptest -f convert.dat -F .
 
 if [ $? -ne 0 ] ; then
-    log-helper error "slaptest conversion failed"
+    echo "slaptest conversion failed"
     exit
 fi
 
@@ -38,7 +34,7 @@ for schema in ${SCHEMAS} ; do
     ldif_file=${schema_name}.ldif
 
     if [ -e "${schema_dir}/${ldif_file}" ]; then
-      log-helper warning "${schema} ldif file ${schema_dir}/${ldif_file} already exists skipping conversion"
+      echo "${schema} ldif file ${schema_dir}/${ldif_file} already exists skipping conversion"
       continue
     fi
 
