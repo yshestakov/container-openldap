@@ -1,5 +1,5 @@
 Add your custom ldif files here if you don't want to overwrite image default boostrap ldif.
-at run time you can also mount a data volume with your ldif files to /container/service/slapd/assets/config/bootstrap/ldif/custom
+at run time you can also mount a data volume with your ldif files to /slapd/assets/config/bootstrap/ldif/custom
 
 The startup script provides some substitutions in bootstrap ldif files. Following substitutions are supported:
 

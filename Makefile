@@ -1,5 +1,5 @@
-NAME = osixia/openldap
-VERSION = 1.5.0
+NAME = averbeck/openldap
+VERSION = latest
 
 .PHONY: build build-nocache test tag-latest push push-latest release git-tag-version
 
