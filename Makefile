@@ -9,9 +9,6 @@ build:
 build-nocache:
 	docker build -t $(NAME):$(VERSION) --no-cache --rm image
 
-test:
-	env NAME=$(NAME) VERSION=$(VERSION) bats test/test.bats
-
 tag:
 	docker tag $(NAME):$(VERSION) $(NAME):$(VERSION)
 
