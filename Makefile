@@ -1,25 +1,26 @@
-NAME = averbeck/openldap
+NAME = quay.io/yshestakov/openldap
 VERSION = latest
+ARGS:=--build-arg LDAP_OPENLDAP_GID=911 --build-arg LDAP_OPENLDAP_UID=911
 
 .PHONY: build build-nocache test tag-latest push push-latest release git-tag-version
 
 build:
-	docker build -t $(NAME):$(VERSION) --rm image
+	podman build -t $(NAME):$(VERSION) $(ARGS) --rm image 
 
 build-nocache:
-	docker build -t $(NAME):$(VERSION) --no-cache --rm image
+	podman build -t $(NAME):$(VERSION) $(ARGS) --no-cache --rm image
 
 tag:
-	docker tag $(NAME):$(VERSION) $(NAME):$(VERSION)
+	podman tag $(NAME):$(VERSION) $(NAME):$(VERSION)
 
 tag-latest:
-	docker tag $(NAME):$(VERSION) $(NAME):latest
+	podman tag $(NAME):$(VERSION) $(NAME):latest
 
 push:
-	docker push $(NAME):$(VERSION)
+	podman push $(NAME):$(VERSION)
 
 push-latest:
-	docker push $(NAME):latest
+	podman push $(NAME):latest
 
 release: build test tag-latest push push-latest
 

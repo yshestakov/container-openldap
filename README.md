@@ -8,19 +8,19 @@
 
 ## Acknowledgement
 
-This project was forked from [osixia/docker-openldap](https://github.com/osixia/docker-openldap)
+This project was forked from [averbeck/container-openldap](https://github.com/averbeck/container-openldap)
 
 ## Quick Start
 Run OpenLDAP docker image:
 
 ```sh
-docker run --name my-openldap-container --detach averbeck/openldap:latest
+docker run --name my-openldap-container --detach quay.io/yshestakov/openldap:latest
 ```
 
 Do not forget to add the port mapping for both port 389 and 636 if you wish to access the ldap server from another machine.
 
 ```sh
-docker run -p 389:389 -p 636:636 --name my-openldap-container --detach averbeck/openldap:latest
+docker run -p 389:389 -p 636:636 --name my-openldap-container --detach quay.io/yshestakov/openldap:latest
 ```
 
 Either command starts a new container with OpenLDAP running inside. Let's make the first search in our LDAP container:
@@ -63,7 +63,7 @@ docker run \
 	--env LDAP_ORGANISATION="My Company" \
 	--env LDAP_DOMAIN="my-company.com" \
 	--env LDAP_ADMIN_PASSWORD="JonSn0w" \
-	--detach averbeck/openldap:latest
+	--detach quay.io/yshestakov/openldap:latest
 ```
 
 #### Data persistence
@@ -128,12 +128,12 @@ argument to entrypoint if you don't want to overwrite them.
 # single file example:
 docker run \
 	--volume ./bootstrap.ldif:/service/slapd/assets/config/bootstrap/ldif/50-bootstrap.ldif \
-	averbeck/openldap:latest --copy-service
+	quay.io/yshestakov/openldap:latest --copy-service
 
 # directory example:
 docker run \
 	--volume ./ldif:/service/slapd/assets/config/bootstrap/ldif/custom \
-	averbeck/openldap:latest --copy-service
+	quay.io/yshestakov/openldap:latest --copy-service
 ```
 
 #### Seed from internal path
@@ -143,7 +143,7 @@ This image can load ldif and schema files at startup from an internal path. Addi
 For example: Gitlab is not capable of mounting custom paths into docker services of a ci job, but Gitlab automatically mounts the working copy in every service container. So the working copy (sources) are accessible under `/builds` in every services
 of a ci job. The path to the working copy can be obtained via `${CI_PROJECT_DIR}`. See also: https://docs.gitlab.com/runner/executors/docker.html#build-directory-in-service
 
-This may also work with other CI services, if they automatically mount the working directory to the services of a ci job like Gitlab ci does.
+This may also work with other CI services, if they automatically mount the working directory to the services of a ci job like Gitlab-CI does.
 
 In order to seed ldif or schema files from internal path you must set the specific environment variable `LDAP_SEED_INTERNAL_LDIF_PATH` and/or `LDAP_SEED_INTERNAL_SCHEMA_PATH`. If set this will copy any files in the specified directory into the default seeding
 directories of this image.
@@ -156,7 +156,11 @@ variables:
   LDAP_SEED_INTERNAL_SCHEMA_PATH: "${CI_PROJECT_DIR}/docker/openldap/schema"
 ```
 
-Also, certificates can be used by the internal path. The file, specified in a variable, will be copied in the default certificate directory of this image. If desired, you can use these with the LDAP_TLS_CRT_FILENAME, LDAP_TLS_KEY_FILENAME, LDAP_TLS_CA_CRT_FILENAME and LDAP_TLS_DH_PARAM_FILENAME to set a different filename in the default certificate directory of the image.
+Also, certificates can be used by the internal path. The file, specified in a
+variable, will be copied in the default certificate directory of this image. If
+desired, you can use these with the `LDAP_TLS_CRT_FILENAME`,
+`LDAP_TLS_KEY_FILENAME`, `LDAP_TLS_CA_CRT_FILENAME` and `LDAP_TLS_DH_PARAM_FILENAME`
+to set a different filename in the default certificate directory of the image.
 
 	variables:
         LDAP_SEED_INTERNAL_LDAP_TLS_CRT_FILE: "${CI_PROJECT_DIR}/docker/certificates/certs/cert.pem"
@@ -175,13 +179,15 @@ simply mount this directories as a volume to `/var/lib/ldap` and `/etc/ldap/slap
 docker run \
 	--volume /data/slapd/database:/var/lib/ldap \
 	--volume /data/slapd/config:/etc/ldap/slapd.d \
-	--detach averbeck/openldap:latest
+	--detach quay.io/yshestakov/openldap:latest
 ```
 
 You can also use data volume containers. Please refer to:
 > [https://docs.docker.com/engine/tutorials/dockervolumes/](https://docs.docker.com/engine/tutorials/dockervolumes/)
 
-Note: By default this image is waiting an **mdb**  database backend, if you want to use any other database backend set backend type via the LDAP_BACKEND environment variable.
+Note: By default this image is waiting an **mdb**  database backend, if you
+want to use any other database backend set backend type via the `LDAP_BACKEND`
+environment variable.
 
 ### TLS
 
@@ -189,7 +195,7 @@ Note: By default this image is waiting an **mdb**  database backend, if you want
 By default, TLS is already configured and enabled, certificate is created using container hostname (it can be set by docker run --hostname option eg: ldap.example.org).
 
 ```sh
-docker run --hostname ldap.my-company.com --detach averbeck/openldap:latest
+docker run --hostname ldap.my-company.com --detach quay.io/yshestakov/openldap:latest
 ```
 
 #### Use your own certificate
@@ -203,25 +209,25 @@ docker run \
 	--env LDAP_TLS_CRT_FILENAME=my-ldap.crt \
 	--env LDAP_TLS_KEY_FILENAME=my-ldap.key \
 	--env LDAP_TLS_CA_CRT_FILENAME=the-ca.crt \
-	--detach averbeck/openldap:latest
+	--detach quay.io/yshestakov/openldap:latest
 ```
 
 Other solutions are available please refer to the [Advanced User Guide](#advanced-user-guide)
 
 #### Disable TLS
-Add --env LDAP_TLS=false to the run command:
+Add `--env LDAP_TLS=false` to the run command:
 
-	docker run --env LDAP_TLS=false --detach averbeck/openldap:latest
+	docker run --env LDAP_TLS=false --detach quay.io/yshestakov/openldap:latest
 
 ### Multi master replication
 Quick example, with the default config.
 
 	#Create the first ldap server, save the container id in LDAP_CID and get its IP:
-	LDAP_CID=$(docker run --hostname ldap.example.org --env LDAP_REPLICATION=true --detach averbeck/openldap:latest)
+	LDAP_CID=$(docker run --hostname ldap.example.org --env LDAP_REPLICATION=true --detach quay.io/yshestakov/openldap:latest)
 	LDAP_IP=$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $LDAP_CID)
 
 	#Create the second ldap server, save the container id in LDAP2_CID and get its IP:
-	LDAP2_CID=$(docker run --hostname ldap2.example.org --env LDAP_REPLICATION=true --detach averbeck/openldap:latest)
+	LDAP2_CID=$(docker run --hostname ldap2.example.org --env LDAP_REPLICATION=true --detach quay.io/yshestakov/openldap:latest)
 	LDAP2_IP=$(docker inspect -f "{{ .NetworkSettings.IPAddress }}" $LDAP2_CID)
 
 	#Add the pair "ip hostname" to /etc/hosts on each containers,
@@ -257,7 +263,7 @@ You may have some problems with mounted files on some systems. The startup scrip
 
 To fix that run the container with `--copy-service` argument :
 
-		docker run [your options] averbeck/openldap:latest --copy-service
+		docker run [your options] quay.io/yshestakov/openldap:latest --copy-service
 
 ### Debug
 
@@ -267,17 +273,18 @@ Available levels are: `none`, `error`, `warning`, `info`, `debug` and `trace`.
 Example command to run the container in `debug` mode:
 
 ```sh
-docker run --detach averbeck/openldap:latest --loglevel debug
+docker run --detach quay.io/yshestakov/openldap:latest --loglevel debug
 ```
 
 See all command line options:
 
 ```sh
-docker run averbeck/openldap:latest --help
+docker run quay.io/yshestakov/openldap:latest --help
 ```
 
 ## Environment Variables
-Environment variables defaults are set in **image/environment/default.yaml** and **image/environment/default.startup.yaml**.
+Environment variables defaults are set in **image/environment/default.yaml**
+ and **image/environment/default.startup.yaml**.
 
 See how to [set your own environment variables](#set-your-own-environment-variables)
 
@@ -297,7 +304,7 @@ This helps to keep your container configuration secret. If you don't care all en
 Required and used for new ldap server only:
 - **LDAP_ORGANISATION**: Organisation name. Defaults to `Example Inc.`
 - **LDAP_DOMAIN**: Ldap domain. Defaults to `example.org`
-- **LDAP_BASE_DN**: Ldap base DN. If empty automatically set from LDAP_DOMAIN value. Defaults to `(empty)`
+- **LDAP_BASE_DN**: Ldap base DN. If empty automatically set from `LDAP_DOMAIN` value. Defaults to `(empty)`
 - **LDAP_ADMIN_PASSWORD** Ldap Admin password. Defaults to `admin`
 - **LDAP_CONFIG_PASSWORD** Ldap Config password. Defaults to `config`
 
@@ -328,9 +335,13 @@ TLS options:
 Replication options:
 - **LDAP_REPLICATION**: Add openldap replication capabilities. Possible values : `true`, `false`, `own`. Defaults to `false`. Setting this to `own` allow to provide own replication settings via custom bootstrap ldifs.
 
-- **LDAP_REPLICATION_CONFIG_SYNCPROV**: olcSyncRepl options used for the config database. Without **rid** and **provider** which are automatically added based on LDAP_REPLICATION_HOSTS.  Defaults to `binddn="cn=admin,cn=config" bindmethod=simple credentials=$LDAP_CONFIG_PASSWORD searchbase="cn=config" type=refreshAndPersist retry="60 +" timeout=1 starttls=critical`
+- **LDAP_REPLICATION_CONFIG_SYNCPROV**: olcSyncRepl options used for the config database. Without **rid** and **provider** which are automatically added based on `LDAP_REPLICATION_HOSTS`.
+Defaults to `binddn="cn=admin,cn=config" bindmethod=simple credentials=$LDAP_CONFIG_PASSWORD searchbase="cn=config" type=refreshAndPersist retry="60 +" timeout=1 starttls=critical`
 
-- **LDAP_REPLICATION_DB_SYNCPROV**: olcSyncRepl options used for the database. Without **rid** and **provider** which are automatically added based on LDAP_REPLICATION_HOSTS.  Defaults to `binddn="cn=admin,$LDAP_BASE_DN" bindmethod=simple credentials=$LDAP_ADMIN_PASSWORD searchbase="$LDAP_BASE_DN" type=refreshAndPersist interval=00:00:00:10 retry="60 +" timeout=1 starttls=critical`
+- **LDAP_REPLICATION_DB_SYNCPROV**: olcSyncRepl options used for the database.
+  Without **rid** and **provider** which are automatically added based on
+  `LDAP_REPLICATION_HOSTS`.  Defaults to 
+`binddn="cn=admin,$LDAP_BASE_DN" bindmethod=simple credentials=$LDAP_ADMIN_PASSWORD searchbase="$LDAP_BASE_DN" type=refreshAndPersist interval=00:00:00:10 retry="60 +" timeout=1 starttls=critical`
 
 - **LDAP_REPLICATION_HOSTS**: list of replication hosts, must contain the current container hostname set by --hostname on docker run command. Defaults to :
 	```yaml
@@ -340,21 +351,27 @@ Replication options:
 
 	If you want to set this variable at docker run command add the tag `#PYTHON2BASH:` and convert the yaml in python:
 
-		docker run --env LDAP_REPLICATION_HOSTS="#PYTHON2BASH:['ldap://ldap.example.org','ldap://ldap2.example.org']" --detach averbeck/openldap:latest
+		docker run --env LDAP_REPLICATION_HOSTS="#PYTHON2BASH:['ldap://ldap.example.org','ldap://ldap2.example.org']" --detach quay.io/yshestakov/openldap:latest
 
 	To convert yaml to python online: https://yaml-online-parser.appspot.com/
 
 Other environment variables:
 - **KEEP_EXISTING_CONFIG**: Do not change the ldap config. Defaults to `false`
-	- if set to *true* with an existing database, config will remain unchanged. Image tls and replication config will not be run. The container can be started with LDAP_ADMIN_PASSWORD and LDAP_CONFIG_PASSWORD empty or filled with fake data.
-	- if set to *true* when bootstrapping a new database, bootstrap ldif and schema will not be added and tls and replication config will not be run.
+    - if set to *true* with an existing database, config will remain unchanged.
+      Image tls and replication config will not be run. The container can be
+      started with `LDAP_ADMIN_PASSWORD` and `LDAP_CONFIG_PASSWORD` empty or filled with
+      fake data.
+    - if set to *true* when bootstrapping a new database, bootstrap ldif and
+      schema will not be added and tls and replication config will not be run.
 
 - **LDAP_REMOVE_CONFIG_AFTER_SETUP**: delete config folder after setup. Defaults to `true`
-- **LDAP_SSL_HELPER_PREFIX**: ssl-helper environment variables prefix. Defaults to `ldap`, ssl-helper first search config from LDAP_SSL_HELPER_* variables, before SSL_HELPER_* variables.
+- **LDAP_SSL_HELPER_PREFIX**: ssl-helper environment variables prefix. Defaults
+  to `ldap`, ssl-helper first search config from `LDAP_SSL_HELPER_*` variables,
+  before `SSL_HELPER_*` variables.
 - **HOSTNAME**: set the hostname of the running openldap server. Defaults to whatever docker creates.
 - **DISABLE_CHOWN**: do not perform any chown to fix file ownership. Defaults to `false`
-- LDAP_OPENLDAP_UID: runtime docker user uid to run container as
-- LDAP_OPENLDAP_GID: runtime docker user gid to run container as
+- `LDAP_OPENLDAP_UID`: runtime docker user uid to run container as
+- `LDAP_OPENLDAP_GID`: runtime docker user gid to run container as
 
 
 ### Set your own environment variables
@@ -367,7 +384,7 @@ docker run \
 	--env LDAP_ORGANISATION="My company" \
 	--env LDAP_DOMAIN="my-company.com" \
 	--env LDAP_ADMIN_PASSWORD="JonSn0w" \
-	--detach averbeck/openldap:latest
+	--detach quay.io/yshestakov/openldap:latest
 ```
 
 Be aware that environment variable added in command line will be available at any time
@@ -386,10 +403,10 @@ docker run \
 	--env LDAP_DOMAIN="my-company.com" \
 	--env LDAP_ADMIN_PASSWORD_FILE=/run/secrets/ \
 	authentication_admin_pw \
-	--detach averbeck/openldap:latest
+	--detach quay.io/yshestakov/openldap:latest
 ```
 
-Currently this is only supported for LDAP_ADMIN_PASSWORD, LDAP_CONFIG_PASSWORD, LDAP_READONLY_USER_PASSWORD
+Currently this is only supported for `LDAP_ADMIN_PASSWORD`, `LDAP_CONFIG_PASSWORD`, `LDAP_READONLY_USER_PASSWORD`
 
 #### Make your own image or extend this image
 
