@@ -35,14 +35,14 @@ COPY first-start.env /first-start.env
 COPY entrypoint.sh /usr/bin/
 
 # Log level
-ENV LDAP_LOG_LEVEL 256
+ENV LDAP_LOG_LEVEL=256
 # Ulimit
-ENV LDAP_NOFILE 1024
+ENV LDAP_NOFILE=1024
 # Do not perform any chown to fix file ownership
-ENV DISABLE_CHOWN false
+ENV DISABLE_CHOWN=false
 # Default port to bind slapd
-ENV LDAP_PORT 389
-ENV LDAPS_PORT 636
+ENV LDAP_PORT=389
+ENV LDAPS_PORT=636
 
 # Expose default ldap and ldaps ports
 EXPOSE 389 636
